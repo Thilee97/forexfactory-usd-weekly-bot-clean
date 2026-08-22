@@ -1,0 +1,59 @@
+name: ForexFactory USD Weekly Bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_weekly:
+        description: "Send the weekly USD calendar image now"
+        required: false
+        default: "false"
+        type: boolean
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: forexfactory-usd-weekly-bot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      FORCE_WEEKLY: ${{ github.event.inputs.force_weekly || 'false' }}
+      TZ: Asia/Ho_Chi_Minh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run bot
+        run: python bot.py
+
+      - name: Persist notification state
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/state.json
+          if git diff --cached --quiet; then
+            echo "No state changes."
+            exit 0
+          fi
+          git commit -m "chore: update bot state [skip ci]"
+          git pull --rebase
+          git push

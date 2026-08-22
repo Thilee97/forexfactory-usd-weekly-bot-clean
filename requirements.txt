@@ -1,0 +1,4 @@
+requests>=2.32,<3
+Pillow>=11,<12
+beautifulsoup4>=4.13,<5
+cloudscraper>=1.2.71,<2
