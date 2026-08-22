@@ -1,7 +1,7 @@
 {
-  "weekly_sent": "",
-  "reminders": {},
+  "actual_attempts": {},
   "actual_sent": {},
-  "telegram_last_update_id": 0,
-  "actual_attempts": {}
+  "reminders": {},
+  "telegram_last_update_id": 681756939,
+  "weekly_sent": "2026-08-17_2026-08-22"
 }
