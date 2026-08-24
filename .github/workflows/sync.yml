@@ -21,20 +21,27 @@ jobs:
 
       - name: Download Forex Factory JSON (This Week & Next Week)
         run: |
+          # Tải file bằng curl kèm User-Agent trình duyệt để tránh bị Cloudflare chặn HTML
+          curl -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "https://nfs.faireconomy.media/ff_calendar_thisweek.json" -o thisweek.json
+          curl -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "https://nfs.faireconomy.media/ff_calendar_nextweek.json" -o nextweek.json
+
+          # Ghép 2 file JSON thành 1 file data.json
           node -e '
-          async function run() {
+          const fs = require("fs");
+          try {
+            const thisWeek = JSON.parse(fs.readFileSync("thisweek.json", "utf8"));
+            let nextWeek = [];
             try {
-              const thisWeek = await fetch("https://nfs.faireconomy.media/ff_calendar_thisweek.json").then(r => r.json());
-              const nextWeek = await fetch("https://nfs.faireconomy.media/ff_calendar_nextweek.json").then(r => r.json());
-              const fs = require("fs");
-              fs.writeFileSync("data.json", JSON.stringify({ this_week: thisWeek, next_week: nextWeek }));
-              console.log("Tải thành công dữ liệu tuần này và tuần sau!");
-            } catch(e) {
-              console.error("Lỗi cào dữ liệu:", e);
-              process.exit(1);
+              nextWeek = JSON.parse(fs.readFileSync("nextweek.json", "utf8"));
+            } catch (err) {
+              console.log("Không tải được tuần sau, gán mảng rỗng.");
             }
+            fs.writeFileSync("data.json", JSON.stringify({ this_week: thisWeek, next_week: nextWeek }));
+            console.log("Đã tổng hợp dữ liệu data.json thành công!");
+          } catch (e) {
+            console.error("Lỗi xử lý file JSON:", e);
+            process.exit(1);
           }
-          run();
           '
 
       - name: Commit and Push Data
