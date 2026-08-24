@@ -1,5 +1,7 @@
 {
-  "actual_attempts": {},
+  "actual_attempts": {
+    "db7f4cc9f092b6ba": 1
+  },
   "actual_sent": {},
   "reminders": {},
   "telegram_last_update_id": 681756944,
