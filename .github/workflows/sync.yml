@@ -3,7 +3,7 @@ name: Auto Sync Forex Calendar
 on:
   schedule:
     - cron: '0 * * * *' # Chạy tự động 1 tiếng/lần
-  workflow_dispatch: # Cho phép bấm chạy thủ công nút "Run workflow"
+  workflow_dispatch: # Cho phép bấm chạy thủ công
 
 jobs:
   fetch-data:
@@ -14,13 +14,32 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Download Forex Factory JSON
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download Forex Factory JSON (This Week & Next Week)
         run: |
-          curl -s "https://nfs.faireconomy.media/ff_calendar_thisweek.json" -o data.json
+          node -e '
+          async function run() {
+            try {
+              const thisWeek = await fetch("https://nfs.faireconomy.media/ff_calendar_thisweek.json").then(r => r.json());
+              const nextWeek = await fetch("https://nfs.faireconomy.media/ff_calendar_nextweek.json").then(r => r.json());
+              const fs = require("fs");
+              fs.writeFileSync("data.json", JSON.stringify({ this_week: thisWeek, next_week: nextWeek }));
+              console.log("Tải thành công dữ liệu tuần này và tuần sau!");
+            } catch(e) {
+              console.error("Lỗi cào dữ liệu:", e);
+              process.exit(1);
+            }
+          }
+          run();
+          '
 
       - name: Commit and Push Data
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update forex data" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update forex data (this week & next week)" && git push)
