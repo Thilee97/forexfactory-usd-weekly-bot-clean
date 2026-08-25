@@ -1,8 +1,11 @@
 {
   "actual_attempts": {
+    "d8221b9aaab5e6a5": 1,
     "db7f4cc9f092b6ba": 1
   },
-  "actual_sent": {},
+  "actual_sent": {
+    "d8221b9aaab5e6a5": "89.4"
+  },
   "reminders": {},
   "telegram_last_update_id": 681756944,
   "weekly_sent": "2026-08-25_2026-08-28"
