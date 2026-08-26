@@ -6,7 +6,17 @@
   "actual_sent": {
     "d8221b9aaab5e6a5": "89.4"
   },
-  "reminders": {},
+  "reminders": {
+    "1d9b21b46bc58736": [
+      30
+    ],
+    "782e2b2a88ab436d": [
+      30
+    ],
+    "851250b18d65b1b5": [
+      30
+    ]
+  },
   "telegram_last_update_id": 681756944,
   "weekly_sent": "2026-08-25_2026-08-28"
 }
