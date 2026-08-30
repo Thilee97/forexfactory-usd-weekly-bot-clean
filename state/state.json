@@ -1,30 +1,7 @@
 {
-  "actual_attempts": {
-    "1d9b21b46bc58736": 1,
-    "45ab4e5c1ecd8017": 1,
-    "782e2b2a88ab436d": 1,
-    "851250b18d65b1b5": 1,
-    "d8221b9aaab5e6a5": 1,
-    "db7f4cc9f092b6ba": 1
-  },
-  "actual_sent": {
-    "1d9b21b46bc58736": "1.5%",
-    "45ab4e5c1ecd8017": "203K",
-    "782e2b2a88ab436d": "0.2%",
-    "851250b18d65b1b5": "6.4%",
-    "d8221b9aaab5e6a5": "89.4"
-  },
-  "reminders": {
-    "1d9b21b46bc58736": [
-      30
-    ],
-    "782e2b2a88ab436d": [
-      30
-    ],
-    "851250b18d65b1b5": [
-      30
-    ]
-  },
+  "actual_attempts": {},
+  "actual_sent": {},
+  "reminders": {},
   "telegram_last_update_id": 681756944,
   "weekly_sent": "2026-08-25_2026-08-28"
 }
