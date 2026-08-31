@@ -49,21 +49,14 @@ def telegram_url(method: str) -> str:
     return f"https://api.telegram.org/bot{BOT_TOKEN}/{method}"
 
 
-MENU_KEYBOARD = {
-    "keyboard": [
-        ["📅 Lịch USD tuần này", "⏭ Tuần sau"],
-        ["⏰ Tin USD 24h", "🔴 High Impact"],
-        ["🔄 Cập nhật ngay", "ℹ️ Trạng thái bot"],
-        ["📋 Menu"],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
+# Reply keyboard đã được tắt theo yêu cầu người dùng
+# Bot sẽ chỉ gửi text thuần, không kèm nút bấm
+MENU_KEYBOARD = None
 
 
-def send_message(text: str, show_menu: bool = True) -> None:
+def send_message(text: str, show_menu: bool = False) -> None:
     data = {"chat_id": CHAT_ID, "text": text}
-    if show_menu:
+    if show_menu and MENU_KEYBOARD is not None:
         data["reply_markup"] = json.dumps(MENU_KEYBOARD, ensure_ascii=False)
     r = requests.post(
         telegram_url("sendMessage"),
@@ -73,9 +66,9 @@ def send_message(text: str, show_menu: bool = True) -> None:
     r.raise_for_status()
 
 
-def send_photo(path: Path, caption: str, show_menu: bool = True) -> None:
+def send_photo(path: Path, caption: str, show_menu: bool = False) -> None:
     data = {"chat_id": CHAT_ID, "caption": caption}
-    if show_menu:
+    if show_menu and MENU_KEYBOARD is not None:
         data["reply_markup"] = json.dumps(MENU_KEYBOARD, ensure_ascii=False)
     with path.open("rb") as f:
         r = requests.post(
