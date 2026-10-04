@@ -522,6 +522,95 @@ def render_week_image(events: list[dict[str, Any]], output: Path) -> None:
     img.save(output, "PNG", optimize=True)
 
 
+def send_weekly_calendar(
+    events: list[dict[str, Any]],
+    state: dict[str, Any],
+    key: str,
+    title: str = "📅 LỊCH KINH TẾ USD TRONG TUẦN",
+    mark_sent: bool = True,
+) -> None:
+    if not events:
+        send_message(f"{title}\n\n🟢 Tuần này không có sự kiện kinh tế USD nào trên lịch.")
+        if mark_sent:
+            state["weekly_sent"] = key
+        return
+
+    start_date = min(e["local_dt"].date() for e in events)
+    end_date = max(e["local_dt"].date() for e in events)
+
+    events_by_date: dict[Any, list[dict[str, Any]]] = {}
+    for e in events:
+        d = e["local_dt"].date()
+        events_by_date.setdefault(d, []).append(e)
+
+    high_count = sum(1 for e in events if e.get("impact") == "High")
+    med_count = sum(1 for e in events if e.get("impact") == "Medium")
+    low_count = sum(1 for e in events if e.get("impact") == "Low")
+
+    header = (
+        f"{title}\n"
+        f"🗓 {start_date.strftime('%d/%m')} – {end_date.strftime('%d/%m/%Y')}\n"
+        f"📊 Tổng: {len(events)} sự kiện (🔴 {high_count} High | 🟠 {med_count} Medium | 🟡 {low_count} Low)\n"
+        f"🕒 Giờ Việt Nam (GMT+7)\n"
+        f"════════════════════════"
+    )
+
+    day_blocks = []
+    weekday_vn = [
+        "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm",
+        "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"
+    ]
+
+    for d in sorted(events_by_date.keys()):
+        day_name = weekday_vn[d.weekday()]
+        d_str = d.strftime("%d/%m")
+        day_events = sorted(events_by_date[d], key=lambda e: e["local_dt"])
+
+        ev_lines = []
+        for e in day_events:
+            t_str = e["local_dt"].strftime("%H:%M")
+            impact = e.get("impact", "")
+            icon = "🔴" if impact == "High" else ("🟠" if impact == "Medium" else "🟡")
+            title_ev = e.get("title", "")
+            fc = value_or_dash(e.get("forecast"))
+            prev = value_or_dash(e.get("previous"))
+            ev_lines.append(
+                f"  • {t_str} | {icon} {title_ev}\n    ↳ Dự báo: {fc} | Trước đó: {prev}"
+            )
+
+        block = f"🗓 {day_name.upper()} ({d_str}):\n\n" + "\n\n".join(ev_lines)
+        day_blocks.append(block)
+
+    full_content = (
+        header
+        + "\n\n"
+        + "\n\n────────────────────────\n\n".join(day_blocks)
+        + "\n\n════════════════════════\n🕒 Tự động gửi lúc 06:00 Thứ Hai • Nguồn: Forex Factory"
+    )
+
+    if len(full_content) <= 4000:
+        send_message(full_content)
+    else:
+        chunks = []
+        cur = header
+        for b in day_blocks:
+            piece = "\n\n────────────────────────\n\n" + b
+            if len(cur) + len(piece) > 3800:
+                chunks.append(cur)
+                cur = b
+            else:
+                cur += piece
+        if cur:
+            cur += "\n\n════════════════════════\nNguồn: Forex Factory"
+            chunks.append(cur)
+        for c in chunks:
+            send_message(c)
+
+    if mark_sent:
+        state["weekly_sent"] = key
+    print(f"Sent weekly calendar text for week {key}")
+
+
 def send_weekly_image(
     events: list[dict[str, Any]],
     state: dict[str, Any],
@@ -530,28 +619,7 @@ def send_weekly_image(
     mark_sent: bool = True,
     include_live: bool = True,
 ) -> None:
-    if include_live:
-        try:
-            live_rows = scrape_current_week()
-            merge_live_values(events, live_rows)
-        except Exception as exc:
-            print(f"[warning] Live table unavailable for weekly image: {exc}", file=sys.stderr)
-
-    render_week_image(events, IMAGE_PATH)
-
-    start_date = min(e["local_dt"].date() for e in events) if events else datetime.now(LOCAL_TZ).date()
-    end_date = max(e["local_dt"].date() for e in events) if events else start_date
-
-    caption = (
-        f"{title}\n"
-        f"🗓 {start_date.strftime('%d/%m')} - {end_date.strftime('%d/%m/%Y')}\n"
-        "🕒 Giờ Việt Nam (GMT+7)\n"
-        f"📊 {len(events)} sự kiện USD\n"
-        "Nguồn: Forex Factory"
-    )
-    send_photo(IMAGE_PATH, caption)
-    if mark_sent:
-        state["weekly_sent"] = key
+    send_weekly_calendar(events, state, key, title=title, mark_sent=mark_sent)
 
 
 def send_next_week_image(state: dict[str, Any]) -> None:
