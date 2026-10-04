@@ -46,6 +46,113 @@ CHAT_ID = require_env("TELEGRAM_CHAT_ID")
 FORCE_WEEKLY = os.getenv("FORCE_WEEKLY", "false").lower() == "true"
 FORCE_DAILY = os.getenv("FORCE_DAILY", "false").lower() == "true"
 
+EVENT_TRANSLATIONS: dict[str, str] = {
+    # Lao động & Việc làm
+    "Non-Farm Employment Change": "Bảng lương Phi nông nghiệp",
+    "Unemployment Rate": "Tỷ lệ thất nghiệp",
+    "Average Hourly Earnings m/m": "Thu nhập bình quân mỗi giờ tháng",
+    "Average Hourly Earnings y/y": "Thu nhập bình quân mỗi giờ năm",
+    "Unemployment Claims": "Đơn xin trợ cấp thất nghiệp",
+    "Continuing Jobless Claims": "Số người tiếp tục nhận trợ cấp",
+    "ADP Non-Farm Employment Change": "Việc làm phi nông nghiệp ADP",
+    "ADP Weekly Employment Change": "Việc làm hàng tuần ADP",
+    "JOLTS Job Openings": "Cơ hội việc làm JOLTS",
+    "Challenger Job Cuts y/y": "Báo cáo sa thải việc làm Challenger",
+    # Lạm phát & Giá cả
+    "CPI m/m": "Lạm phát CPI tháng",
+    "CPI y/y": "Lạm phát CPI năm",
+    "Core CPI m/m": "CPI Cốt lõi tháng",
+    "Core CPI y/y": "CPI Cốt lõi năm",
+    "PCE Price Index m/m": "Chỉ số giá PCE tháng",
+    "PCE Price Index y/y": "Chỉ số giá PCE năm",
+    "Core PCE Price Index m/m": "PCE Cốt lõi tháng",
+    "Core PCE Price Index y/y": "PCE Cốt lõi năm",
+    "PPI m/m": "Chỉ số giá sản xuất PPI",
+    "Core PPI m/m": "PPI Cốt lõi tháng",
+    "PPI y/y": "PPI theo năm",
+    "Import Prices m/m": "Giá hàng nhập khẩu",
+    "Export Prices m/m": "Giá hàng xuất khẩu",
+    "Prelim UoM Inflation Expectations": "Kỳ vọng lạm phát ĐH Michigan",
+    "Revised UoM Inflation Expectations": "Kỳ vọng lạm phát điều chỉnh",
+    # Fed & Lãi suất
+    "Federal Funds Rate": "Quyết định Lãi suất Fed",
+    "FOMC Statement": "Tuyên bố FOMC",
+    "FOMC Press Conference": "Họp báo FOMC",
+    "FOMC Meeting Minutes": "Biên bản cuộc họp FOMC",
+    "FOMC Economic Projections": "Dự báo kinh tế FOMC",
+    # Tăng trưởng & GDP
+    "Advance GDP q/q": "Tăng trưởng GDP sơ bộ",
+    "Prelim GDP q/q": "Tăng trưởng GDP điều chỉnh",
+    "Final GDP q/q": "Tăng trưởng GDP chính thức",
+    "GDP Price Index q/q": "Chỉ số giá GDP",
+    # Sản xuất, Dịch vụ & PMI
+    "ISM Manufacturing PMI": "Chỉ số PMI Sản xuất ISM",
+    "ISM Services PMI": "Chỉ số PMI Dịch vụ ISM",
+    "ISM Manufacturing Prices": "Chỉ số giá sản xuất ISM",
+    "ISM Services Prices": "Chỉ số giá dịch vụ ISM",
+    "Flash Manufacturing PMI": "PMI Sản xuất sơ bộ",
+    "Flash Services PMI": "PMI Dịch vụ sơ bộ",
+    "Final Manufacturing PMI": "PMI Sản xuất chính thức",
+    "Final Services PMI": "PMI Dịch vụ chính thức",
+    "Empire State Manufacturing Index": "Chỉ số sản xuất Empire State",
+    "Philly Fed Manufacturing Index": "Chỉ số sản xuất Philly Fed",
+    "Richmond Manufacturing Index": "Chỉ số sản xuất Richmond Fed",
+    "Industrial Production m/m": "Sản xuất công nghiệp",
+    "Capacity Utilization Rate": "Tỷ lệ sử dụng công suất sản xuất",
+    "Factory Orders m/m": "Đơn đặt hàng nhà máy",
+    "Durable Goods Orders m/m": "Đơn hàng hàng hóa lâu bền",
+    "Core Durable Goods Orders m/m": "Đơn hàng lâu bền cốt lõi",
+    # Tiêu dùng & Bán lẻ
+    "Retail Sales m/m": "Doanh số bán lẻ",
+    "Core Retail Sales m/m": "Doanh số bán lẻ cốt lõi",
+    "CB Consumer Confidence": "Niềm tin người tiêu dùng CB",
+    "Prelim UoM Consumer Sentiment": "Tâm lý người tiêu dùng ĐH Michigan",
+    "Revised UoM Consumer Sentiment": "Tâm lý người tiêu dùng điều chỉnh",
+    "Consumer Credit m/m": "Tín dụng tiêu dùng",
+    "Wholesale Inventories m/m": "Tồn kho bán buôn",
+    "Final Wholesale Inventories m/m": "Tồn kho bán buôn chính thức",
+    "Business Inventories m/m": "Tồn kho doanh nghiệp",
+    "RCM/TIPP Economic Optimism": "Lạc quan kinh tế RCM/TIPP",
+    "IBD/TIPP Economic Optimism": "Lạc quan kinh tế IBD/TIPP",
+    # Bất động sản
+    "Building Permits": "Giấy phép xây dựng",
+    "Housing Starts": "Số nhà khởi công",
+    "Existing Home Sales": "Doanh số nhà hiện có",
+    "New Home Sales": "Doanh số nhà mới",
+    "Pending Home Sales m/m": "Doanh số nhà chờ bán",
+    # Thương mại & Ngoại hối
+    "Trade Balance": "Cán cân thương mại",
+    "Treasury Currency Report": "Báo cáo tiền tệ Bộ Tài chính",
+    "TIC Long-Term Purchases": "Dòng vốn ròng vào tài sản Mỹ (TIC)",
+    # Năng lượng & Dầu khí
+    "Crude Oil Inventories": "Dự trữ dầu thô EIA",
+    "Natural Gas Storage": "Dự trữ khí tự nhiên EIA",
+    "API Weekly Statistical Bulletin": "Báo cáo tồn kho dầu khí API",
+}
+
+
+def translate_title(title: str) -> str:
+    title_clean = title.strip()
+    if title_clean in EVENT_TRANSLATIONS:
+        return EVENT_TRANSLATIONS[title_clean]
+    for k, v in EVENT_TRANSLATIONS.items():
+        if k.lower() in title_clean.lower():
+            return v
+    t_lower = title_clean.lower()
+    if "speaks" in t_lower:
+        if "powell" in t_lower:
+            return "Chủ tịch Fed Powell phát biểu"
+        return "Phát biểu của quan chức Fed"
+    if "bond auction" in t_lower:
+        if "10-y" in t_lower:
+            return "Đấu thầu Trái phiếu 10 năm"
+        if "30-y" in t_lower:
+            return "Đấu thầu Trái phiếu 30 năm"
+        if "2-y" in t_lower:
+            return "Đấu thầu Trái phiếu 2 năm"
+        return "Đấu thầu Trái phiếu Kho bạc"
+    return ""
+
 
 def telegram_url(method: str) -> str:
     return f"https://api.telegram.org/bot{BOT_TOKEN}/{method}"
@@ -571,11 +678,13 @@ def send_weekly_calendar(
             t_str = e["local_dt"].strftime("%H:%M")
             impact = e.get("impact", "")
             icon = "🔴" if impact == "High" else ("🟠" if impact == "Medium" else "🟡")
-            title_ev = e.get("title", "")
+            title_ev = e.get("title", "").strip()
+            title_vi = translate_title(title_ev)
+            title_display = f"{title_ev} ({title_vi})" if title_vi else title_ev
             fc = value_or_dash(e.get("forecast"))
             prev = value_or_dash(e.get("previous"))
             ev_lines.append(
-                f"  • {t_str} | {icon} {title_ev}\n    ↳ Dự báo: {fc} | Trước đó: {prev}"
+                f"  • {t_str} | {icon} {title_display}\n    ↳ Dự báo: {fc} | Trước đó: {prev}"
             )
 
         block = f"🗓 {day_name.upper()} ({d_str}):\n\n" + "\n\n".join(ev_lines)
@@ -647,10 +756,13 @@ def process_reminders(events: list[dict[str, Any]], state: dict[str, Any], now: 
 
         for threshold in REMINDER_MINUTES:
             if threshold - 5 < minutes_to <= threshold and threshold not in sent:
+                title_ev = event.get('title', '').strip()
+                title_vi = translate_title(title_ev)
+                title_display = f"{title_ev} ({title_vi})" if title_vi else title_ev
                 msg = (
                     f"⏰ TIN USD SẮP RA — còn khoảng {threshold} phút\n\n"
                     f"{impact_symbol(event.get('impact',''))} {event.get('impact','')} Impact\n"
-                    f"🇺🇸 {event.get('title','')}\n"
+                    f"🇺🇸 {title_display}\n"
                     f"🕒 {event['local_dt'].strftime('%H:%M - %d/%m/%Y')} (GMT+7)\n\n"
                     f"Forecast: {value_or_dash(event.get('forecast'))}\n"
                     f"Previous: {value_or_dash(event.get('previous'))}\n"
@@ -716,11 +828,14 @@ def process_actuals(events: list[dict[str, Any]], state: dict[str, Any], now: da
         if not actual:
             continue
 
+        title_ev = event.get('title', '').strip()
+        title_vi = translate_title(title_ev)
+        title_display = f"{title_ev} ({title_vi})" if title_vi else title_ev
         comparison = comparison_text(actual, str(event.get("forecast") or ""))
         msg = (
             "🚨 KẾT QUẢ TIN USD\n\n"
             f"{impact_symbol(event.get('impact',''))} {event.get('impact','')} Impact\n"
-            f"🇺🇸 {event.get('title','')}\n"
+            f"🇺🇸 {title_display}\n"
             f"🕒 {event['local_dt'].strftime('%H:%M - %d/%m/%Y')} (GMT+7)\n\n"
             f"Actual: {value_or_dash(actual)}\n"
             f"Forecast: {value_or_dash(event.get('forecast'))}\n"
@@ -757,11 +872,13 @@ def send_daily_calendar(events: list[dict[str, Any]], state: dict[str, Any], now
             t_str = e["local_dt"].strftime("%H:%M")
             impact = e.get("impact", "")
             icon = "🔴" if impact == "High" else ("🟠" if impact == "Medium" else "🟡")
-            title = e.get("title", "")
+            title_ev = e.get("title", "").strip()
+            title_vi = translate_title(title_ev)
+            title_display = f"{title_ev} ({title_vi})" if title_vi else title_ev
             fc = value_or_dash(e.get("forecast"))
             prev = value_or_dash(e.get("previous"))
             lines.append(
-                f"• {t_str} | {icon} {title}\n  ↳ Dự báo: {fc} | Trước đó: {prev}"
+                f"• {t_str} | {icon} {title_display}\n  ↳ Dự báo: {fc} | Trước đó: {prev}"
             )
 
         events_text = "\n\n".join(lines)
