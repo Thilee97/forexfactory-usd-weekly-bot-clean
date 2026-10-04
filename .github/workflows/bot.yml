@@ -8,6 +8,11 @@ on:
         required: false
         default: "false"
         type: boolean
+      force_daily:
+        description: "Send the daily USD calendar now"
+        required: false
+        default: "false"
+        type: boolean
   schedule:
     - cron: "*/5 * * * *"
 
@@ -26,6 +31,7 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       FORCE_WEEKLY: ${{ github.event.inputs.force_weekly || 'false' }}
+      FORCE_DAILY: ${{ github.event.inputs.force_daily || 'false' }}
       TZ: Asia/Ho_Chi_Minh
     steps:
       - name: Checkout

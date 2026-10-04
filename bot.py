@@ -29,8 +29,9 @@ NOTIFY_IMPACTS = {"High", "Medium"}
 REMINDER_MINUTES = (30, 10)
 ACTUAL_LOOKBACK_MINUTES = 45
 ACTUAL_MAX_ATTEMPTS = 4
-WEEKLY_SEND_WEEKDAY = 0
-WEEKLY_SEND_HOUR = 7
+WEEKLY_SEND_WEEKDAY = 0  # 0 = Thứ Hai (Monday)
+WEEKLY_SEND_HOUR = 6     # 06:00 AM đầu tuần
+DAILY_SEND_HOUR = 6      # 06:00 AM mỗi ngày
 
 
 def require_env(name: str) -> str:
@@ -43,21 +44,17 @@ def require_env(name: str) -> str:
 BOT_TOKEN = require_env("TELEGRAM_BOT_TOKEN")
 CHAT_ID = require_env("TELEGRAM_CHAT_ID")
 FORCE_WEEKLY = os.getenv("FORCE_WEEKLY", "false").lower() == "true"
+FORCE_DAILY = os.getenv("FORCE_DAILY", "false").lower() == "true"
 
 
 def telegram_url(method: str) -> str:
     return f"https://api.telegram.org/bot{BOT_TOKEN}/{method}"
 
 
-# Reply keyboard đã được tắt theo yêu cầu người dùng
-# Bot sẽ chỉ gửi text thuần, không kèm nút bấm
-MENU_KEYBOARD = None
-
-
-def send_message(text: str, show_menu: bool = False) -> None:
+def send_message(text: str, remove_keyboard: bool = True) -> None:
     data = {"chat_id": CHAT_ID, "text": text}
-    if show_menu and MENU_KEYBOARD is not None:
-        data["reply_markup"] = json.dumps(MENU_KEYBOARD, ensure_ascii=False)
+    if remove_keyboard:
+        data["reply_markup"] = json.dumps({"remove_keyboard": True})
     r = requests.post(
         telegram_url("sendMessage"),
         data=data,
@@ -66,10 +63,10 @@ def send_message(text: str, show_menu: bool = False) -> None:
     r.raise_for_status()
 
 
-def send_photo(path: Path, caption: str, show_menu: bool = False) -> None:
+def send_photo(path: Path, caption: str, remove_keyboard: bool = True) -> None:
     data = {"chat_id": CHAT_ID, "caption": caption}
-    if show_menu and MENU_KEYBOARD is not None:
-        data["reply_markup"] = json.dumps(MENU_KEYBOARD, ensure_ascii=False)
+    if remove_keyboard:
+        data["reply_markup"] = json.dumps({"remove_keyboard": True})
     with path.open("rb") as f:
         r = requests.post(
             telegram_url("sendPhoto"),
@@ -82,11 +79,29 @@ def send_photo(path: Path, caption: str, show_menu: bool = False) -> None:
 
 def load_state() -> dict[str, Any]:
     if not STATE_PATH.exists():
-        return {"weekly_sent": "", "reminders": {}, "actual_sent": {}, "actual_attempts": {}, "telegram_last_update_id": 0}
+        return {
+            "weekly_sent": "",
+            "daily_sent": "",
+            "reminders": {},
+            "actual_sent": {},
+            "actual_attempts": {},
+        }
     try:
-        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        s = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        s.setdefault("weekly_sent", "")
+        s.setdefault("daily_sent", "")
+        s.setdefault("reminders", {})
+        s.setdefault("actual_sent", {})
+        s.setdefault("actual_attempts", {})
+        return s
     except Exception:
-        return {"weekly_sent": "", "reminders": {}, "actual_sent": {}, "actual_attempts": {}, "telegram_last_update_id": 0}
+        return {
+            "weekly_sent": "",
+            "daily_sent": "",
+            "reminders": {},
+            "actual_sent": {},
+            "actual_attempts": {},
+        }
 
 
 def save_state(state: dict[str, Any]) -> None:
@@ -650,190 +665,54 @@ def process_actuals(events: list[dict[str, Any]], state: dict[str, Any], now: da
         send_message(msg)
         actual_sent[eid] = actual
 
-def fetch_telegram_updates(last_update_id: int) -> list[dict[str, Any]]:
-    params = {
-        "offset": last_update_id + 1,
-        "timeout": 0,
-        "allowed_updates": json.dumps(["message"]),
-    }
-    r = requests.get(telegram_url("getUpdates"), params=params, timeout=30)
-    r.raise_for_status()
-    payload = r.json()
-    if not payload.get("ok"):
-        raise RuntimeError(f"Telegram getUpdates failed: {payload}")
-    return payload.get("result", [])
+def send_daily_calendar(events: list[dict[str, Any]], state: dict[str, Any], now: datetime) -> None:
+    today = now.date()
+    today_str = today.isoformat()
+    today_events = [e for e in events if e["local_dt"].date() == today]
 
+    weekday_vn = [
+        "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm",
+        "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"
+    ][today.weekday()]
+    date_formatted = today.strftime("%d/%m/%Y")
 
-def format_event_line(event: dict[str, Any]) -> str:
-    return (
-        f"{impact_symbol(event.get('impact',''))} "
-        f"{event['local_dt'].strftime('%d/%m %H:%M')} — "
-        f"{event.get('title','')}"
-    )
-
-
-def send_menu() -> None:
-    send_message(
-        "📋 FOREX FACTORY USD BOT\n\n"
-        "Chọn chức năng bên dưới:\n"
-        "📅 Lịch USD tuần này — gửi ảnh lịch USD tuần hiện tại\n"
-        "⏭ Tuần sau — gửi ảnh lịch USD của tuần kế tiếp\n"
-        "⏰ Tin USD 24h — các tin trong 24 giờ tới\n"
-        "🔴 High Impact — chỉ tin USD mức High\n"
-        "🔄 Cập nhật ngay — kiểm tra lịch và Actual mới nhất\n"
-        "ℹ️ Trạng thái bot — trạng thái dữ liệu/cron\n\n"
-        "⏱ Bot chạy bằng GitHub Actions nên nút có thể phản hồi chậm 0–5 phút."
-    )
-
-
-def send_upcoming_24h(events: list[dict[str, Any]], now: datetime) -> None:
-    upcoming = [
-        e for e in events
-        if now <= e["local_dt"] <= now + timedelta(hours=24)
-    ]
-    if not upcoming:
-        send_message("⏰ Không có tin USD nào trong 24 giờ tới.")
-        return
-
-    lines = ["⏰ TIN USD TRONG 24 GIỜ TỚI", ""]
-    for e in upcoming:
-        lines.append(format_event_line(e))
-        lines.append(
-            f"   Forecast: {value_or_dash(e.get('forecast'))} | "
-            f"Previous: {value_or_dash(e.get('previous'))}"
+    if not today_events:
+        msg = (
+            f"📅 LỊCH KINH TẾ USD HÔM NAY ({weekday_vn}, {date_formatted})\n\n"
+            "🟢 Hôm nay không có sự kiện kinh tế USD nào trên lịch.\n\n"
+            "🕒 Tự động gửi lúc 06:00 (GMT+7) • Nguồn: Forex Factory"
         )
-    lines += ["", "🕒 Giờ Việt Nam (GMT+7)", "Nguồn: Forex Factory"]
-    send_message("\n".join(lines))
-
-
-def send_high_impact(events: list[dict[str, Any]], now: datetime) -> None:
-    high = [e for e in events if e.get("impact") == "High" and e["local_dt"] >= now - timedelta(hours=12)]
-    if not high:
-        send_message("🔴 Tuần này không còn tin USD High Impact nào.")
-        return
-
-    lines = ["🔴 USD HIGH IMPACT — TUẦN NÀY", ""]
-    for e in high:
-        lines.append(format_event_line(e))
-        lines.append(
-            f"   Forecast: {value_or_dash(e.get('forecast'))} | "
-            f"Previous: {value_or_dash(e.get('previous'))}"
-        )
-    lines += ["", "🕒 Giờ Việt Nam (GMT+7)", "Nguồn: Forex Factory"]
-    send_message("\n".join(lines))
-
-
-def send_status(events: list[dict[str, Any]], state: dict[str, Any], now: datetime) -> None:
-    upcoming = [e for e in events if e["local_dt"] >= now]
-    next_event = upcoming[0] if upcoming else None
-    lines = [
-        "ℹ️ TRẠNG THÁI BOT",
-        "",
-        "✅ GitHub Actions: cấu hình chạy mỗi 5 phút",
-        "✅ Forex Factory Weekly JSON: đọc được",
-        f"📊 Sự kiện USD trong tuần: {len(events)}",
-        f"📅 Tuần đã gửi ảnh: {state.get('weekly_sent') or 'Chưa'}",
-        f"🕒 Kiểm tra lúc: {now.strftime('%H:%M:%S %d/%m/%Y')} GMT+7",
-    ]
-    if next_event:
-        mins = max(0, int((next_event["local_dt"] - now).total_seconds() // 60))
-        lines += [
-            "",
-            "⏭ Tin USD kế tiếp:",
-            format_event_line(next_event),
-            f"⏳ Còn khoảng {mins} phút",
-        ]
-    send_message("\n".join(lines))
-
-
-def send_refresh(events: list[dict[str, Any]], now: datetime) -> None:
-    live_ok = False
-    try:
-        live_rows = scrape_current_week()
-        merge_live_values(events, live_rows)
-        live_ok = True
-    except Exception as exc:
-        print(f"[warning] Manual refresh live scrape failed: {exc}", file=sys.stderr)
-
-    recent = [
-        e for e in events
-        if now - timedelta(hours=6) <= e["local_dt"] <= now + timedelta(hours=12)
-    ]
-    lines = [
-        "🔄 CẬP NHẬT FOREX FACTORY",
-        f"🕒 {now.strftime('%H:%M:%S %d/%m/%Y')} GMT+7",
-        f"🌐 Live Actual: {'OK' if live_ok else 'tạm thời không đọc được'}",
-        "",
-    ]
-    if recent:
-        for e in recent[:12]:
-            lines.append(format_event_line(e))
-            if e["local_dt"] <= now:
-                lines.append(
-                    f"   Actual: {value_or_dash(e.get('actual'))} | "
-                    f"Forecast: {value_or_dash(e.get('forecast'))} | "
-                    f"Previous: {value_or_dash(e.get('previous'))}"
-                )
-            else:
-                lines.append(
-                    f"   Forecast: {value_or_dash(e.get('forecast'))} | "
-                    f"Previous: {value_or_dash(e.get('previous'))}"
-                )
     else:
-        lines.append("Không có tin USD gần thời điểm hiện tại.")
-    lines += ["", "Nguồn: Forex Factory"]
-    send_message("\n".join(lines))
+        today_events.sort(key=lambda e: e["local_dt"])
+        lines = []
+        for e in today_events:
+            t_str = e["local_dt"].strftime("%H:%M")
+            impact = e.get("impact", "")
+            icon = "🔴" if impact == "High" else ("🟠" if impact == "Medium" else "🟡")
+            title = e.get("title", "")
+            fc = value_or_dash(e.get("forecast"))
+            prev = value_or_dash(e.get("previous"))
+            lines.append(
+                f"• {t_str} | {icon} {title}\n  ↳ Dự báo: {fc} | Trước đó: {prev}"
+            )
 
+        events_text = "\n\n".join(lines)
+        high_count = sum(1 for e in today_events if e.get("impact") == "High")
+        med_count = sum(1 for e in today_events if e.get("impact") == "Medium")
+        low_count = sum(1 for e in today_events if e.get("impact") == "Low")
 
-def process_telegram_menu(
-    events: list[dict[str, Any]],
-    state: dict[str, Any],
-    now: datetime,
-    key: str,
-) -> None:
-    last_id = int(state.get("telegram_last_update_id", 0) or 0)
-    try:
-        updates = fetch_telegram_updates(last_id)
-    except Exception as exc:
-        print(f"[warning] Telegram menu polling failed: {exc}", file=sys.stderr)
-        return
+        msg = (
+            f"📅 LỊCH KINH TẾ USD HÔM NAY ({weekday_vn}, {date_formatted})\n"
+            f"📊 Tổng cộng: {len(today_events)} sự kiện (🔴 {high_count} High | 🟠 {med_count} Medium | 🟡 {low_count} Low)\n"
+            "────────────────────────\n\n"
+            f"{events_text}\n\n"
+            "────────────────────────\n"
+            "🕒 Tự động gửi lúc 06:00 (GMT+7) • Nguồn: Forex Factory"
+        )
 
-    for update in updates:
-        update_id = int(update.get("update_id", 0))
-        if update_id > int(state.get("telegram_last_update_id", 0) or 0):
-            state["telegram_last_update_id"] = update_id
-
-        message = update.get("message") or {}
-        chat = message.get("chat") or {}
-        if str(chat.get("id", "")) != str(CHAT_ID):
-            continue
-
-        command = str(message.get("text") or "").strip()
-
-        try:
-            if command in {"/start", "/menu", "📋 Menu"}:
-                send_menu()
-            elif command == "📅 Lịch USD tuần này":
-                send_weekly_image(events, state, key)
-            elif command == "⏭ Tuần sau":
-                send_next_week_image(state)
-            elif command == "⏰ Tin USD 24h":
-                send_upcoming_24h(events, now)
-            elif command == "🔴 High Impact":
-                send_high_impact(events, now)
-            elif command == "🔄 Cập nhật ngay":
-                send_refresh(events, now)
-            elif command == "ℹ️ Trạng thái bot":
-                send_status(events, state, now)
-        except Exception as exc:
-            print(f"[warning] Telegram command failed: {command!r}: {exc}", file=sys.stderr)
-            try:
-                send_message(
-                    "⚠️ Không lấy được dữ liệu cho yêu cầu này ở lần chạy hiện tại. "
-                    "Bot vẫn tiếp tục hoạt động; bạn có thể bấm lại sau."
-                )
-            except Exception:
-                pass
+    send_message(msg)
+    state["daily_sent"] = today_str
+    print(f"Sent daily calendar for {today_str}")
 
 
 def prune_state(state: dict[str, Any], valid_ids: set[str]) -> None:
@@ -856,6 +735,7 @@ def main() -> None:
     valid_ids = {e["id"] for e in events}
     prune_state(state, valid_ids)
 
+    # 1. Gửi lịch Tuần (Thứ Hai lúc 06:00 sáng)
     should_send_weekly = (
         FORCE_WEEKLY
         or (
@@ -864,12 +744,24 @@ def main() -> None:
             and state.get("weekly_sent") != key
         )
     )
-
     if should_send_weekly:
-        print("Sending weekly USD calendar image...")
+        print(f"Sending weekly USD calendar image for week {key}...")
         send_weekly_image(events, state, key)
 
-    process_telegram_menu(events, state, now, key)
+    # 2. Gửi lịch Ngày (Mỗi ngày lúc 06:00 sáng)
+    today_str = now.date().isoformat()
+    should_send_daily = (
+        FORCE_DAILY
+        or (
+            now.hour >= DAILY_SEND_HOUR
+            and state.get("daily_sent") != today_str
+        )
+    )
+    if should_send_daily:
+        print(f"Sending daily USD calendar for {today_str}...")
+        send_daily_calendar(events, state, now)
+
+    # 3. Quản lý cảnh báo trước giờ ra tin và cập nhật số liệu Actual
     process_reminders(events, state, now)
     process_actuals(events, state, now)
     save_state(state)

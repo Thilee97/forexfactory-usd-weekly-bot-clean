@@ -7,31 +7,23 @@ Telegram bot + GitHub Actions theo dõi **lịch kinh tế USD từ Forex Factor
 - Lấy Weekly Export JSON của Forex Factory.
 - Chỉ lọc các sự kiện `USD`.
 - Chuyển thời gian sang **Asia/Ho_Chi_Minh (GMT+7)**.
-- Tạo ảnh PNG lịch USD **tuần này** và **tuần sau**.
+- Tạo ảnh PNG lịch USD **tuần này** và tự động gửi 1 lần vào **đầu tuần (06:00 sáng Thứ Hai)**.
+- Tự động gửi tóm tắt lịch USD trong ngày vào mỗi **06:00 sáng hàng ngày**.
 - Ở cột **Impact**, ảnh chỉ hiển thị **chấm tròn màu nhỏ**:
   - đỏ = High
   - cam = Medium
   - vàng = Low
-- Gửi ảnh lịch qua Telegram.
+- Tự động xóa sạch menu phím bấm tương tác để giao diện chat Telegram luôn sạch sẽ.
 - Nhắc tin High/Medium trước **30 phút** và **10 phút**.
 - Sau giờ công bố, thử lấy `Actual` trong thời gian ngắn.
 - Có state chống gửi trùng.
-- Có menu nút Telegram.
-- GitHub Actions chạy mỗi **10 phút**.
+- GitHub Actions chạy tự động mỗi **5 phút**.
 
-## Menu Telegram
+## Lịch gửi tự động
 
-```text
-📅 Lịch USD tuần này    ⏭ Tuần sau
-⏰ Tin USD 24h          🔴 High Impact
-🔄 Cập nhật ngay        ℹ️ Trạng thái bot
-📋 Menu
-```
-
-Gửi `/start` hoặc `/menu` để hiện menu.
-
-Vì bot được kích hoạt theo lịch GitHub Actions mỗi 10 phút, yêu cầu từ nút Telegram
-có thể được xử lý ở lần workflow kế tiếp.
+1. **Lịch Tuần**: 06:00 sáng Thứ Hai hàng tuần (gửi ảnh PNG trọn gói cả tuần).
+2. **Lịch Ngày**: 06:00 sáng mỗi ngày (gửi danh sách các sự kiện USD trong ngày kèm dự báo & kỳ trước).
+3. **Cảnh báo Realtime**: Nhắc trước 30m / 10m và cập nhật kết quả Actual sau khi ra tin.
 
 ## Chế độ low-request
 
