@@ -933,18 +933,18 @@ def main() -> None:
         print(f"Sending weekly USD calendar image for week {key}...")
         send_weekly_image(events, state, key)
 
-    # 2. Gửi lịch Ngày (Mỗi ngày lúc 06:00 sáng)
-    today_str = now.date().isoformat()
-    should_send_daily = (
-        FORCE_DAILY
-        or (
-            now.hour >= DAILY_SEND_HOUR
-            and state.get("daily_sent") != today_str
-        )
-    )
-    if should_send_daily:
-        print(f"Sending daily USD calendar for {today_str}...")
-        send_daily_calendar(events, state, now)
+    # 2. Gửi lịch Ngày (Đã ngưng theo yêu cầu người dùng, giữ nguyên các tính năng khác)
+    # today_str = now.date().isoformat()
+    # should_send_daily = (
+    #     FORCE_DAILY
+    #     or (
+    #         now.hour >= DAILY_SEND_HOUR
+    #         and state.get("daily_sent") != today_str
+    #     )
+    # )
+    # if should_send_daily:
+    #     print(f"Sending daily USD calendar for {today_str}...")
+    #     send_daily_calendar(events, state, now)
 
     # 3. Quản lý cảnh báo trước giờ ra tin và cập nhật số liệu Actual
     process_reminders(events, state, now)
