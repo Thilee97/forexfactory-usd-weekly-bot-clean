@@ -1,6 +1,10 @@
 {
-  "actual_attempts": {},
-  "actual_sent": {},
+  "actual_attempts": {
+    "50b5599240e618c3": 1
+  },
+  "actual_sent": {
+    "50b5599240e618c3": "0.8%"
+  },
   "daily_sent": "2026-10-29",
   "reminders": {
     "8750617cf536f38e": [
