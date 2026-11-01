@@ -1,16 +1,8 @@
 {
-  "actual_attempts": {
-    "50b5599240e618c3": 1
-  },
-  "actual_sent": {
-    "50b5599240e618c3": "0.8%"
-  },
+  "actual_attempts": {},
+  "actual_sent": {},
   "daily_sent": "2026-10-29",
-  "reminders": {
-    "8750617cf536f38e": [
-      30
-    ]
-  },
+  "reminders": {},
   "telegram_last_update_id": 681756944,
   "weekly_sent": "2026-10-27_2026-10-30"
 }
