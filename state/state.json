@@ -1,5 +1,8 @@
 {
-  "actual_attempts": {},
+  "actual_attempts": {
+    "10a2fd7f483f868c": 1,
+    "bd03ce78e625fd2c": 1
+  },
   "actual_sent": {},
   "daily_sent": "2026-11-19",
   "reminders": {},
